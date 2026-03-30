@@ -3,3 +3,6 @@ composer.list
 vendor
 .php-cs-fixer.cache
 .phpunit.result.cache
+
+# Caliber local state
+.caliber/
