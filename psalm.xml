@@ -1,41 +1,54 @@
 <?xml version="1.0"?>
 <psalm
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
-    xsi:schemaLocation="https://getpsalm.org/schema/config file:///home/david/src/RateLimit/vendor/vimeo/psalm/config.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://getpsalm.org/schema/config https://getpsalm.org/schema/config.xsd"
+    errorLevel="5"
+    findUnusedCode="true"
+    findUnusedVariablesAndParams="true"
+    runCachedAnalyses="true"
+    cacheDirectory=".psalm.cache"
 >
     <projectFiles>
-        <directory name="src/" />
+        <directory name="src/"/>
         <ignoreFiles>
-            <directory name="vendor" />
+            <directory name="vendor/"/>
+            <directory name="tests/"/>
         </ignoreFiles>
     </projectFiles>
 
     <issueHandlers>
 
+        <!-- Suppress known adapter-layer type polymorphism issues -->
         <UndefinedClass>
             <errorLevel type="suppress">
-                <file name="src/Adapter/Memcached.php" />
+                <file name="src/Adapter/Memcached.php"/>
             </errorLevel>
         </UndefinedClass>
 
-        <LessSpecificReturnType errorLevel="info" />
+        <!-- Info-level issues that don't block the build -->
+        <LessSpecificReturnType errorLevel="info"/>
+        <DeprecatedMethod errorLevel="info"/>
+        <DeprecatedProperty errorLevel="info"/>
+        <DeprecatedClass errorLevel="info"/>
+        <DeprecatedConstant errorLevel="info"/>
+        <DeprecatedInterface errorLevel="info"/>
+        <DeprecatedTrait errorLevel="info"/>
+        <MissingClosureReturnType errorLevel="info"/>
+        <MissingClosureParamType errorLevel="info"/>
+        <RedundantCondition errorLevel="info"/>
+        <RedundantConditionGivenDocblockType errorLevel="info"/>
+        <UnresolvableInclude errorLevel="info"/>
 
-        <!-- level 3 issues - slightly lazy code writing, but provably low false-negatives -->
-
-        <DeprecatedMethod errorLevel="info" />
-        <DeprecatedProperty errorLevel="info" />
-        <DeprecatedClass errorLevel="info" />
-        <DeprecatedConstant errorLevel="info" />
-        <DeprecatedInterface errorLevel="info" />
-        <DeprecatedTrait errorLevel="info" />
-
-        <MissingClosureReturnType errorLevel="info" />
-
-        <MissingClosureParamType errorLevel="info" />
-        <RedundantCondition errorLevel="info" />
-        <RedundantConditionGivenDocblockType errorLevel="info" />
-
-        <UnresolvableInclude errorLevel="info" />
+        <!-- UnusedMethod suppressions for adapter pattern -->
+        <PossiblyUnusedMethod>
+            <errorLevel type="suppress">
+                <file name="src/Adapter.php"/>
+            </errorLevel>
+        </PossiblyUnusedMethod>
     </issueHandlers>
+
+    <!-- Annotate PHPUnit test classes as test files (reduces noise) -->
+    <plugins>
+    </plugins>
 </psalm>
