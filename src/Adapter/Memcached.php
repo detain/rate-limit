@@ -20,12 +20,15 @@ class Memcached extends \Detain\RateLimit\Adapter
     }
 
     /**
-     * @return float
+     * @return float|mixed
      * @param string $key
      */
     public function get($key)
     {
         $val = $this->_get($key);
+        if (is_array($val) || is_object($val)) {
+            return $val;
+        }
         return (float) $val;
     }
 

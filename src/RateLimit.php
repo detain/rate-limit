@@ -55,6 +55,10 @@ class RateLimit
      */
     public function check($id, $use = 1.0)
     {
+        if ($use < 0) {
+            throw new \InvalidArgumentException('$use must be >= 0');
+        }
+
         $rate = $this->maxRequests / $this->period;
 
         $t_key = $this->keyTime($id);
@@ -62,12 +66,12 @@ class RateLimit
 
         if (!$this->adapter->exists($t_key)) {
             // first hit; setup storage; allow.
-            $this->adapter->set($t_key, time(), $this->period);
+            $this->adapter->set($t_key, microtime(true), $this->period);
             $this->adapter->set($a_key, ($this->maxRequests - $use), $this->period);
             return true;
         }
 
-        $c_time = time();
+        $c_time = microtime(true);
 
         $time_passed = $c_time - $this->adapter->get($t_key);
         $this->adapter->set($t_key, $c_time, $this->period);
@@ -110,14 +114,18 @@ class RateLimit
      */
     public function getAllowance($id)
     {
-        $this->check($id, 0.0);
-
+        $t_key = $this->keyTime($id);
         $a_key = $this->keyAllow($id);
 
-        if (!$this->adapter->exists($a_key)) {
+        if (!$this->adapter->exists($t_key)) {
             return $this->maxRequests;
         }
-        return (int) max(0, floor($this->adapter->get($a_key)));
+
+        $rate = $this->maxRequests / $this->period;
+        $time_passed = microtime(true) - $this->adapter->get($t_key);
+        $allowance = $this->adapter->get($a_key) + $time_passed * $rate;
+
+        return (int) max(0, floor(min($allowance, $this->maxRequests)));
     }
 
     /**

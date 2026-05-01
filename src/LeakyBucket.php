@@ -99,7 +99,7 @@ class LeakyBucket
      */
     public function fill($drops = 1)
     {
-        if (!$drops > 0) {
+        if ($drops <= 0) {
             throw new \InvalidArgumentException(
                 sprintf(
                     'The parameter "%s" has to be an integer greater than 0.',
@@ -157,7 +157,7 @@ class LeakyBucket
      */
     public function getData()
     {
-        return $this->bucket['data'];
+        return isset($this->bucket['data']) ? $this->bucket['data'] : null;
     }
 
     /**
@@ -249,6 +249,10 @@ class LeakyBucket
         if ($this->bucket['drops'] < 0) {
             $this->bucket['drops'] = 0;
         }
+
+        // Update timestamp so a second call doesn't re-leak the same elapsed period
+        $this->bucket['time'] = microtime(true);
+
         return $this;
     }
 
@@ -287,7 +291,7 @@ class LeakyBucket
         try {
             $this->storage->del(static::LEAKY_BUCKET_KEY_PREFIX . $this->key . static::LEAKY_BUCKET_KEY_POSTFIX);
         } catch (\Exception $ex) {
-            throw new \Exception(sprintf('Could not save "%s" to storage provider.', $this->key));
+            throw new \Exception(sprintf('Could not delete "%s" from storage provider.', $this->key));
         }
         return $this;
     }
@@ -322,7 +326,7 @@ class LeakyBucket
         try {
             return $this->storage->get(static::LEAKY_BUCKET_KEY_PREFIX . $this->key . static::LEAKY_BUCKET_KEY_POSTFIX);
         } catch (\Exception $ex) {
-            throw new \Exception(sprintf('Could not save "%s" to storage provider.', $this->key));
+            throw new \Exception(sprintf('Could not get "%s" from storage provider.', $this->key));
         }
     }
 }

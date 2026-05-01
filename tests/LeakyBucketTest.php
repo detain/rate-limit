@@ -32,12 +32,23 @@ class LeakyBucketTest extends TestCase
      */
     protected function getCleanBucket(Adapter $storage = null, array $options = [])
     {
-        $m = new \Memcached();
-        $m->addServer('localhost', 11211);
-        $adapter = new Adapter\Memcached($m);
-        $bucket  = new LeakyBucket(
+        if ($storage === null) {
+            if (!extension_loaded('memcached')) {
+                $this->markTestSkipped('memcached extension not installed');
+            }
+            $memcache_host = getenv('MEMCACHE_HOST') ?: 'localhost';
+            $m = new \Memcached();
+            $m->addServer($memcache_host, 11211);
+            $m->set('_leakybucket_ping', 1, 1);
+            if ($m->getResultCode() !== \Memcached::RES_SUCCESS) {
+                $this->markTestSkipped("Could not connect to Memcached at {$memcache_host}:11211");
+            }
+            $storage = new Adapter\Memcached($m);
+        }
+
+        $bucket = new LeakyBucket(
             'leakybucket-test',
-            $adapter,
+            $storage,
             $options
         );
 

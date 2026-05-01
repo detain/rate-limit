@@ -100,12 +100,16 @@ class RateLimitTest extends TestCase
             $this->markTestSkipped("memcached extension not installed");
         }
 
-        $memcache_host = getenv('MEMCACHE_HOST');
-        if ($memcache_host === false) {
-            $memcache_host = 'localhost';
-        }
+        $memcache_host = getenv('MEMCACHE_HOST') ?: 'localhost';
         $m = new \Memcached();
         $m->addServer($memcache_host, 11211);
+
+        // Verify the server is actually reachable before running assertions
+        $m->set('_ratelimit_ping', 1, 1);
+        if ($m->getResultCode() !== \Memcached::RES_SUCCESS) {
+            $this->markTestSkipped("Could not connect to Memcached at {$memcache_host}:11211");
+        }
+
         $adapter = new Adapter\Memcached($m);
         $this->check($adapter);
     }
