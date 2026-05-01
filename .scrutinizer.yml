@@ -57,17 +57,20 @@ build:
         # PCoV — extremely fast code-coverage driver (replaces Xdebug for cov)
         - pcov
 
-      # Environment variables set before every build step.
-      # Use these to configure services (Redis, Memcached) or tool behaviour.
-      environment:
-        # Disable Xdebug for faster static-analysis runs (we use pcov for cov)
-        XDEBUG_MODE: 'off'
-        # Ensure PHPUnit uses pcov as the coverage driver (no ext required, builtin)
-        PHP_COVERAGE_DRIVER: 'pcov'
-        # Verbose composer for easier CI debugging
-        COMPOSER_PROCESS_TIMEOUT: 600
-        # Skip platform req checks so composer doesn't die if extensions missing locally
-        COMPOSER_IGNORE_PLATFORM_REQ_RPHP: '0'
+    # -------------------------------------------------------------------------
+    # Environment variables set before every build step.
+    # Use these to configure services (Redis, Memcached) or tool behaviour.
+    # NOTE: This is at build.environment.environment:, NOT build.environment.php.environment:
+    # -------------------------------------------------------------------------
+    environment:
+      # Disable Xdebug for faster static-analysis runs (we use pcov for cov)
+      XDEBUG_MODE: 'off'
+      # Ensure PHPUnit uses pcov as the coverage driver (no ext required, builtin)
+      PHP_COVERAGE_DRIVER: 'pcov'
+      # Verbose composer for easier CI debugging
+      COMPOSER_PROCESS_TIMEOUT: 600
+      # Skip platform req checks so composer doesn't die if extensions missing locally
+      COMPOSER_IGNORE_PLATFORM_REQ_RPHP: '0'
 
     # -------------------------------------------------------------------------
     # Dependency caching — critical for build speed
