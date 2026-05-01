@@ -1,9 +1,30 @@
 {
-    "type": "library",
     "name": "detain/rate-limit",
     "description": "PHP rate limiting library with Token Bucket and Leaky Bucket Algorithms, based on palepurple/rate-limit, grandson to touhonoob/rate-limit, and jeroenvisser101/LeakyBucket",
     "keywords": ["ratelimit", "throttling", "limits", "tokenbucket", "leakybucket"],
+    "type": "library",
     "license": "MIT",
+    "authors": [
+        {
+            "name": "Joe Huss",
+            "email": "detain@interserver.net"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://packagist.org",
+            "canonical": true
+        }
+    ],
     "require": {
         "php": ">=8.1",
         "psr/cache": "^2|^3"
@@ -27,12 +48,6 @@
         "ext-memcached": "Required for MemcachedAdapter",
         "ext-apcu": "Required for APCuAdapter"
     },
-    "authors": [
-        {
-            "name": "Joe Huss",
-            "email": "detain@interserver.net"
-        }
-    ],
     "autoload": {
         "psr-4": {
             "Detain\\RateLimit\\": "src/"
@@ -57,6 +72,8 @@
         "check-format": "@php ./vendor/bin/php-cs-fixer fix --ansi --dry-run --diff",
         "format": "@php ./vendor/bin/php-cs-fixer fix --ansi",
         "test": "@php ./vendor/bin/phpunit --configuration phpunit.xml.dist",
+        "analyse": "@php psalm-wrapper.php",
+        "cs-fix": "@php ./vendor/bin/php-cs-fixer fix src tests",
         "phpcs": "@php ./vendor/bin/phpcs --standard=PSR12 src/",
         "phpcs:fix": "@php ./vendor/bin/phpcbf --standard=PSR12 src/"
     }

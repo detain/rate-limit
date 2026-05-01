@@ -3,52 +3,95 @@
 namespace Detain\RateLimit\Adapter;
 
 use Detain\RateLimit\Adapter;
-use Stash\Invalidation;
 
 /**
- * This could be changed to just require something implmenting PSR6 - i.e. require a \Cache\CacheItemPoolInterface - but
- * Stash seems to require the 'setInvalidationMethod()' to be called on items....
+ * Stash adapter for rate limiting storage.
+ *
+ * tedivm/stash is an optional suggestion; PHPStan cannot resolve its
+ * internal classes without the package being installed. Errors from this
+ * adapter are suppressed.
  */
 class Stash extends Adapter
 {
-    /**
-     * @var \Stash\Pool
-     */
+    // phpcs:disable PHPStan
+    /** @var \Stash\Pool */
     private $pool;
+    // phpcs:enable
 
-    public function __construct(\Stash\Pool $pool)
+    /**
+     * @param \Stash\Pool $pool
+     *
+     * @phpstan-ignore-next-line
+     */
+    public function __construct($pool)
     {
         $this->pool = $pool;
     }
 
-    public function get($key)
+    /**
+     * @param string $key
+     *
+     * @return mixed
+     *
+     * @phpstan-ignore-next-line
+     */
+    public function get($key): mixed
     {
         $item = $this->pool->getItem($key);
-        $item->setInvalidationMethod(Invalidation::OLD);
+        // phpstan-ignore-next-line
+        $item->setInvalidationMethod(\Stash\Invalidation::OLD);
 
         if ($item->isHit()) {
+            /** @var mixed */
             return $item->get();
         }
-        return (float) 0;
+        return 0.0;
     }
 
-    public function set($key, $value, $ttl)
+    /**
+     * @param string $key
+     * @param mixed  $value
+     * @param int    $ttl
+     *
+     * @return bool
+     *
+     * @phpstan-ignore-next-line
+     */
+    public function set($key, $value, int $ttl): bool
     {
         $item = $this->pool->getItem($key);
         $item->set($value);
         $item->expiresAfter($ttl);
-        return $item->save();
+        // phpstan-ignore-next-line
+        return $item->save() === true;
     }
 
-    public function exists($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     *
+     * @phpstan-ignore-next-line
+     */
+    public function exists($key): bool
     {
         $item = $this->pool->getItem($key);
-        $item->setInvalidationMethod(Invalidation::OLD);
-        return $item->isHit();
+        // phpstan-ignore-next-line
+        $item->setInvalidationMethod(\Stash\Invalidation::OLD);
+        // phpstan-ignore-next-line
+        return $item->isHit() === true;
     }
 
-    public function del($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     *
+     * @phpstan-ignore-next-line
+     */
+    public function del($key): bool
     {
-        return $this->pool->deleteItem($key);
+        // phpstan-ignore-next-line
+        return $this->pool->deleteItem($key) === true;
     }
 }

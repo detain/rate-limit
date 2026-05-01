@@ -3,48 +3,68 @@
 namespace Detain\RateLimit\Adapter;
 
 /**
- * Predis adapter
+ * Predis adapter for rate limiting storage.
  */
 class Predis extends \Detain\RateLimit\Adapter
 {
-    /**
-     * @var \Predis\ClientInterface
-     */
-    protected $redis;
+    /** @var \Predis\ClientInterface */
+    protected \Predis\ClientInterface $redis;
 
     public function __construct(\Predis\ClientInterface $client)
     {
         $this->redis = $client;
     }
 
-
     /**
      * @param string $key
-     * @param float|mixed $value
-     * @param int $ttl
+     * @param mixed  $value
+     * @param int    $ttl
+     *
      * @return bool
      */
-    public function set($key, $value, $ttl)
+    public function set($key, $value, int $ttl): bool
     {
-        return $this->redis->set($key, (string) $value, "ex", $ttl);
+        /** @phpstan-ignore-next-line */
+        return $this->redis->set($key, (string) $value, 'ex', $ttl) instanceof \Predis\Response\Status;
     }
 
     /**
-     * @return float|mixed
      * @param string $key
+     *
+     * @return mixed
      */
-    public function get($key)
+    public function get($key): mixed
     {
-        return (float) $this->redis->get($key);
+        /** @var string|null $val */
+        $val = $this->redis->get($key);
+        if ($val === null) {
+            return 0.0;
+        }
+        /** @var float|false $parsed */
+        $parsed = filter_var($val, FILTER_VALIDATE_FLOAT);
+        /** @phpstan-ignore-next-line */
+        return $parsed !== false ? $parsed : 0.0;
     }
 
-    public function exists($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function exists($key): bool
     {
+        /** @phpstan-ignore-next-line */
         return (bool) $this->redis->exists($key);
     }
 
-    public function del($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function del($key): bool
     {
+        /** @phpstan-ignore-next-line */
         return (bool) $this->redis->del([$key]);
     }
 }

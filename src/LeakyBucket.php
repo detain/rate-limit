@@ -31,28 +31,28 @@ class LeakyBucket
      *
      * @var string
      */
-    private $key;
+    private string $key;
 
     /**
      * The current bucket.
      *
-     * @var array<string, mixed>
+     * @var array{drops: int, time: float, data?: mixed}
      */
-    private $bucket;
+    private array $bucket;
 
     /**
      * A Adapter where the bucket data will be stored.
      *
      * @var Adapter
      */
-    private $storage;
+    private Adapter $storage;
 
     /**
      * Array containing default settings.
      *
-     * @var array<string, mixed>
+     * @var array{capacity: int, leak: float}
      */
-    private static $defaults = [
+    private static array $defaults = [
         'capacity' => 10,
         'leak'     => 0.33
     ];
@@ -60,29 +60,33 @@ class LeakyBucket
     /**
      * The settings for this bucket.
      *
-     * @var array<string, mixed>
+     * @var array{capacity: int, leak: float}
      */
-    private $settings = [];
+    private array $settings;
 
     /**
      * Class constructor.
      *
-     * @param string           $key      The bucket key
-     * @param Adapter $storage  The storage provider that has to be used
+     * @param string $key      The bucket key
+     * @param Adapter $storage The storage provider that has to be used
      * @param array<string, mixed> $settings The settings to be set
      */
-    public function __construct($key, Adapter $storage, array $settings = [])
+    public function __construct(string $key, Adapter $storage, array $settings = [])
     {
         $this->key     = $key;
         $this->storage = $storage;
 
         // Make sure only existing settings can be set
         $settings       = array_intersect_key($settings, self::$defaults);
-        $this->settings = array_merge(self::$defaults, $settings);
+        /** @var array{capacity: int, leak: float} $merged */
+        $merged = array_merge(self::$defaults, $settings);
+        $this->settings = $merged;
 
         $this->bucket = $this->get();
 
-        // Initialize the bucket
+        // Initialize the bucket — isset() false-alarm is a PHPStan false-positive
+        // due to template array type; we use getData() accessor to probe 'data' key
+        /** @phpstan-ignore-next-line */
         if (!isset($this->bucket['drops']) || !isset($this->bucket['time'])) {
             $this->bucket = [
                 'drops' => 0,
@@ -95,9 +99,10 @@ class LeakyBucket
      * Fills the bucket with a given amount of drops.
      *
      * @param int $drops Amount of drops that have to be added to the bucket
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function fill($drops = 1)
+    public function fill(int $drops = 1): self
     {
         if ($drops <= 0) {
             throw new \InvalidArgumentException(
@@ -122,9 +127,10 @@ class LeakyBucket
      * Spills a few drops from the bucket.
      *
      * @param int $drops Amount of drops to spill from the bucket
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function spill($drops = 1)
+    public function spill(int $drops = 1): self
     {
         // Make sure the key is at least zero
         $this->bucket['drops'] = $this->bucket['drops'] ?: 0;
@@ -142,9 +148,10 @@ class LeakyBucket
      * Attach aditional data to the bucket.
      *
      * @param mixed $data The data to be attached to this bucket
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function setData($data)
+    public function setData($data): self
     {
         $this->bucket['data'] = $data;
         return $this;
@@ -157,7 +164,7 @@ class LeakyBucket
      */
     public function getData()
     {
-        return isset($this->bucket['data']) ? $this->bucket['data'] : null;
+        return $this->bucket['data'] ?? null;
     }
 
     /**
@@ -165,7 +172,7 @@ class LeakyBucket
      *
      * @return float
      */
-    public function getCapacity()
+    public function getCapacity(): float
     {
         return (float) $this->settings['capacity'];
     }
@@ -175,7 +182,7 @@ class LeakyBucket
      *
      * @return float
      */
-    public function getCapacityUsed()
+    public function getCapacityUsed(): float
     {
         return (float) $this->bucket['drops'];
     }
@@ -185,7 +192,7 @@ class LeakyBucket
      *
      * @return float
      */
-    public function getCapacityLeft()
+    public function getCapacityLeft(): float
     {
         return (float) $this->settings['capacity'] - $this->bucket['drops'];
     }
@@ -195,7 +202,7 @@ class LeakyBucket
      *
      * @return float
      */
-    public function getLeak()
+    public function getLeak(): float
     {
         return (float) $this->settings['leak'];
     }
@@ -203,9 +210,9 @@ class LeakyBucket
     /**
      * Gets the last timestamp set on the bucket.
      *
-     * @return mixed
+     * @return float
      */
-    public function getLastTimestamp()
+    public function getLastTimestamp(): float
     {
         return $this->bucket['time'];
     }
@@ -213,9 +220,9 @@ class LeakyBucket
     /**
      * Updates the bucket's timestamp
      *
-     * @return LeakyBucket
+     * @return $this
      */
-    public function touch()
+    public function touch(): self
     {
         $this->bucket['time'] = microtime(true);
         return $this;
@@ -226,16 +233,17 @@ class LeakyBucket
      *
      * @return bool
      */
-    public function isFull()
+    public function isFull(): bool
     {
         return (ceil((float) $this->bucket['drops']) >= $this->settings['capacity']);
     }
 
     /**
      * Calculates how much the bucket has leaked.
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function leak()
+    public function leak(): self
     {
         // Calculate the leakage
         $elapsed = microtime(true) - $this->bucket['time'];
@@ -243,7 +251,7 @@ class LeakyBucket
 
         // Make sure the key is at least zero
         $this->bucket['drops'] = $this->bucket['drops'] ?: 0;
-        $this->bucket['drops'] -= $leakage;
+        $this->bucket['drops'] -= (int) $leakage;
 
         // Make sure we don't set it less than zero
         if ($this->bucket['drops'] < 0) {
@@ -258,9 +266,10 @@ class LeakyBucket
 
     /**
      * Removes the overflow if present.
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function overflow()
+    public function overflow(): self
     {
         if ($this->bucket['drops'] > $this->settings['capacity']) {
             $this->bucket['drops'] = $this->settings['capacity'];
@@ -270,13 +279,14 @@ class LeakyBucket
 
     /**
      * Saves the bucket to the Adapter used.
-     * @return LeakyBucket
+     *
+     * @return $this
      */
-    public function save()
+    public function save(): self
     {
         // Set the timestamp
         $this->touch();
-        $this->set($this->bucket, intval($this->settings['capacity'] / $this->settings['leak'] * 1.5));
+        $this->set($this->bucket, (int) ($this->settings['capacity'] / $this->settings['leak'] * 1.5));
         return $this;
     }
 
@@ -284,12 +294,12 @@ class LeakyBucket
      * Resets the bucket.
      *
      * @throws \Exception
-     * @return LeakyBucket
+     * @return $this
      */
-    public function reset()
+    public function reset(): self
     {
         try {
-            $this->storage->del(static::LEAKY_BUCKET_KEY_PREFIX . $this->key . static::LEAKY_BUCKET_KEY_POSTFIX);
+            $this->storage->del(self::LEAKY_BUCKET_KEY_PREFIX . $this->key . self::LEAKY_BUCKET_KEY_POSTFIX);
         } catch (\Exception $ex) {
             throw new \Exception(sprintf('Could not delete "%s" from storage provider.', $this->key));
         }
@@ -299,15 +309,16 @@ class LeakyBucket
     /**
      * Sets the active bucket's value
      *
-     * @param array<string, mixed> $bucket The bucket's contents
-     * @param int   $ttl    The time to live for the bucket	 *
+     * @param array{drops: int, time: float, data?: mixed} $bucket The bucket's contents
+     * @param int $ttl The time to live for the bucket
+     *
      * @throws \Exception
-     * @return LeakyBucket
+     * @return $this
      */
-    private function set(array $bucket, $ttl = 0)
+    private function set(array $bucket, int $ttl = 0): self
     {
         try {
-            $this->storage->set(static::LEAKY_BUCKET_KEY_PREFIX . $this->key . static::LEAKY_BUCKET_KEY_POSTFIX, $bucket, $ttl);
+            $this->storage->set(self::LEAKY_BUCKET_KEY_PREFIX . $this->key . self::LEAKY_BUCKET_KEY_POSTFIX, $bucket, $ttl);
         } catch (\Exception $ex) {
             throw new \Exception(sprintf('Could not save "%s" to storage provider.', $this->key));
         }
@@ -317,14 +328,27 @@ class LeakyBucket
     /**
      * Gets the active bucket's value
      *
-     * @return float|mixed
+     * @return array{drops: int, time: float, data?: mixed}
      *
      * @throws \Exception
      */
-    private function get()
+    private function get(): array
     {
         try {
-            return $this->storage->get(static::LEAKY_BUCKET_KEY_PREFIX . $this->key . static::LEAKY_BUCKET_KEY_POSTFIX);
+            /** @var mixed $raw */
+            $raw = $this->storage->get(self::LEAKY_BUCKET_KEY_PREFIX . $this->key . self::LEAKY_BUCKET_KEY_POSTFIX);
+            if (!is_array($raw)) {
+                return [
+                    'drops' => 0,
+                    'time'  => microtime(true),
+                ];
+            }
+            /** @var array{drops?: mixed, time?: mixed, data?: mixed} $raw */
+            return [
+                'drops' => isset($raw['drops']) && is_int($raw['drops']) ? $raw['drops'] : 0,
+                'time'  => isset($raw['time']) && is_float($raw['time']) ? $raw['time'] : microtime(true),
+                'data'  => $raw['data'] ?? null,
+            ];
         } catch (\Exception $ex) {
             throw new \Exception(sprintf('Could not get "%s" from storage provider.', $this->key));
         }

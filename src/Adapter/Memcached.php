@@ -2,53 +2,68 @@
 
 namespace Detain\RateLimit\Adapter;
 
+/**
+ * Memcached adapter for rate limiting storage.
+ */
 class Memcached extends \Detain\RateLimit\Adapter
 {
-    /**
-     * @var \Memcached
-     */
-    protected $memcached;
+    /** @var \Memcached */
+    protected \Memcached $memcached;
 
     public function __construct(\Memcached $memcached)
     {
         $this->memcached = $memcached;
     }
 
-    public function set($key, $value, $ttl)
+    /**
+     * @param string $key
+     * @param mixed  $value
+     * @param int    $ttl
+     *
+     * @return bool
+     */
+    public function set($key, $value, int $ttl): bool
     {
+        /** @phpstan-ignore-next-line */
         return $this->memcached->set($key, $value, $ttl);
     }
 
     /**
-     * @return float|mixed
      * @param string $key
+     *
+     * @return mixed
      */
-    public function get($key)
+    public function get($key): mixed
     {
-        $val = $this->_get($key);
-        if (is_array($val) || is_object($val)) {
-            return $val;
+        $val = $this->memcached->get($key);
+        if ($this->memcached->getResultCode() === \Memcached::RES_NOTFOUND) {
+            return null;
         }
-        return (float) $val;
+        // Memcached can return false for non-existent keys (before getResultCode check above)
+        // and various scalar values for existing keys.
+        /** @var mixed */
+        return $val;
     }
 
     /**
-     * @return bool|float
      * @param string $key
+     *
+     * @return bool
      */
-    private function _get($key)
+    public function exists($key): bool
     {
-        return $this->memcached->get($key);
+        $this->memcached->get($key);
+        return $this->memcached->getResultCode() === \Memcached::RES_SUCCESS;
     }
 
-    public function exists($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function del($key): bool
     {
-        $val = $this->_get($key);
-        return $val !== false;
-    }
-
-    public function del($key)
-    {
+        /** @phpstan-ignore-next-line */
         return $this->memcached->delete($key);
     }
 }

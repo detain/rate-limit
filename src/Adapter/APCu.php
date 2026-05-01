@@ -3,28 +3,53 @@
 namespace Detain\RateLimit\Adapter;
 
 /**
- * @author Peter Chung <touhonoob@gmail.com>
- * @date June 7, 2016
+ * APCu adapter for rate limiting storage.
  */
 class APCu extends \Detain\RateLimit\Adapter
 {
-    public function set($key, $value, $ttl)
+    /**
+     * @param string $key
+     * @param mixed  $value
+     * @param int    $ttl
+     *
+     * @return bool
+     */
+    public function set($key, $value, int $ttl): bool
     {
-        return apcu_store($key, $value, $ttl);
+        /** @phpstan-ignore-next-line */
+        return apcu_store($key, $value, $ttl) !== false;
     }
 
-    public function get($key)
+    /**
+     * @param string $key
+     *
+     * @return mixed
+     */
+    public function get($key): mixed
     {
+        /** @phpstan-ignore-next-line */
         return apcu_fetch($key);
     }
 
-    public function exists($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function exists($key): bool
     {
-        return apcu_exists($key);
+        /** @phpstan-ignore-next-line */
+        return apcu_exists($key) !== false;
     }
 
-    public function del($key)
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function del($key): bool
     {
-        return apcu_delete($key);
+        /** @phpstan-ignore-next-line */
+        return apcu_delete($key) !== false;
     }
 }

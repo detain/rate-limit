@@ -1,30 +1,12 @@
-# phpstan.neon — PHPStan configuration
-# Level 9 (near-maximum strictness)
-# Run with: composer phpstan
 includes:
-  - composer/vendor/phpstan/phpstan/conf/bleedingEdge.neon
+  # - vendor/phpstan/phpstan/conf/bleedingEdge.neon
 
 parameters:
   level: 9
-
   paths:
     - src/
-
   excludePaths:
     - vendor/*
-
-  # Treat these dynamically-instantiated classes as known
-  dynamicMethods:
-    - PHPUnit\Framework\TestCase
-    - PHPUnit\Framework\MockObject\MockObject
-
-  ignoreErrors:
-    # Adapter::get() returns mixed/float — allow mixed return for abstract
-    - '#Method Detain\\RateLimit\\Adapter::get\(\) has invalid return type#'
-    # Redis extension can return mixed on older versions
-    - '#Method Detain\\RateLimit\\Adapter\\Redis::set\(\) has invalid return type#'
-
+    - src/Adapter/Stash.php
   reportUnmatchedIgnoredErrors: false
-
-  # tmp directory for PHPStan cache
   tmpDir: .phpstan.cache

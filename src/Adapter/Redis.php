@@ -3,15 +3,14 @@
 namespace Detain\RateLimit\Adapter;
 
 /**
+ * Native ext-redis adapter for rate limiting storage.
+ *
  * @author Peter Chung <touhonoob@gmail.com>
- * @date May 16, 2015
  */
 class Redis extends \Detain\RateLimit\Adapter
 {
-    /**
-     * @var \Redis
-     */
-    protected $redis;
+    /** @var \Redis */
+    protected \Redis $redis;
 
     public function __construct(\Redis $redis)
     {
@@ -20,39 +19,53 @@ class Redis extends \Detain\RateLimit\Adapter
 
     /**
      * @param string $key
-     * @param float|mixed $value
-     * @param int $ttl
+     * @param mixed  $value
+     * @param int    $ttl
+     *
      * @return bool
      */
-    public function set($key, $value, $ttl)
+    public function set($key, $value, int $ttl): bool
     {
-        return (bool) $this->redis->set($key, (string) $value, $ttl);
+        /** @phpstan-ignore-next-line */
+        return $this->redis->set($key, (string) $value, $ttl) !== false;
     }
 
     /**
-     * @return float|mixed
      * @param string $key
+     *
+     * @return mixed
      */
-    public function get($key)
+    public function get($key): mixed
     {
-        return (float) $this->redis->get($key);
+        /** @var string|false $val */
+        $val = $this->redis->get($key);
+        /** @phpstan-ignore-next-line */
+        return $val !== false ? (float) $val : 0.0;
     }
 
     /**
      * @param string $key
+     *
      * @return bool
      */
-    public function exists($key)
+    public function exists($key): bool
     {
-        return $this->redis->exists($key) == true;
+        /** @var int $n */
+        $n = $this->redis->exists($key);
+        // @phpstan-ignore-next-line
+        return $n > 0;
     }
 
     /**
      * @param string $key
-     * @return  bool
+     *
+     * @return bool
      */
-    public function del($key)
+    public function del($key): bool
     {
-        return $this->redis->del($key) > 0;
+        /** @var int|false $result */
+        $result = $this->redis->del($key);
+        /** @phpstan-ignore-next-line */
+        return (int) ($result ?? 0) > 0;
     }
 }

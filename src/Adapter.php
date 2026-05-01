@@ -9,28 +9,32 @@ namespace Detain\RateLimit;
 abstract class Adapter
 {
     /**
-     * @return bool
      * @param string $key
-     * @param float|mixed $value
-     * @param int $ttl - seconds after which this entry will expire e.g 50
+     * @param mixed  $value
+     * @param int    $ttl seconds after which this entry will expire
+     *
+     * @return bool
      */
-    abstract public function set($key, $value, $ttl);
+    abstract public function set($key, $value, int $ttl): bool;
 
     /**
      * @param string $key
-     * @return float|mixed
+     *
+     * @return mixed
      */
     abstract public function get($key);
 
     /**
      * @param string $key
+     *
      * @return bool
      */
-    abstract public function exists($key);
+    abstract public function exists($key): bool;
 
     /**
-     * @return bool
      * @param string $key
+     *
+     * @return bool
      */
-    abstract public function del($key);
+    abstract public function del($key): bool;
 }
