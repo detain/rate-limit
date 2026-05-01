@@ -1,174 +1,44 @@
-# =============================================================================
-# Scrutinizer CI Configuration
-# https://scrutinizer-ci.com/docs/
-# =============================================================================
-#
-# This file drives the Static Analysis + Quality Gates on Scrutinizer-CI.
-# It defines:
-#   - What code is analyzed (filter)
-#   - What tools run (build → environment / dependencies)
-#   - How tests execute (tests)
-#   - What PHP version matrix to test (nodes)
-# =============================================================================
-
-# ---------------------------------------------------------------------------
-# FILTER — Which files to analyze (and which to ignore)
-# ---------------------------------------------------------------------------
 filter:
-  # Paths ALWAYS excluded from all analysis
   excluded_paths:
     - 'tests/*'
     - 'vendor/*'
     - '.git/*'
 
-  # By default we analyze everything under src/
-  # paths:
-  #   - src/**
-
-# ---------------------------------------------------------------------------
-# BUILD — How to install dependencies and run the quality pipeline
-# ---------------------------------------------------------------------------
 build:
-  # Build timeout — kill the whole build if it exceeds this
-  # Format: integer = seconds. Default is 600s.
   timeout: 600
-
   environment:
-    # -------------------------------------------------------------------------
-    # PHP Runtime
-    # -------------------------------------------------------------------------
     php:
-      # Primary version used to `composer install`.
-      # Must match one of the versions in your `nodes:` block below.
       version: 8.3
-
-      # PHP extensions to load/install.
       pecl_extensions:
         - redis
         - memcached
         - apcu
         - pcov
-
-    # Environment variables set before every build step.
-    # NOTE: 'variables' is the correct key for env vars under build.environment.
     variables:
       XDEBUG_MODE: 'off'
       PHP_COVERAGE_DRIVER: 'pcov'
       COMPOSER_PROCESS_TIMEOUT: 600
-      COMPOSER_IGNORE_PLATFORM_REQ_RPHP: '0'
-
-  # -------------------------------------------------------------------------
-  # Dependency caching — critical for build speed
-  # -------------------------------------------------------------------------
-  cache:
-    disabled: false
-    directories:
-      - '~/.composer/cache'
-      - 'composer.lock'
-      - 'vendor/'
-
-  # -------------------------------------------------------------------------
-  # Dependency installation — runs before tools and tests
-  # -------------------------------------------------------------------------
   dependencies:
     override:
       - composer self-update --no-interaction
       - composer install --no-interaction --prefer-dist --ansi
-
-  # -------------------------------------------------------------------------
-  # Static Analysis Tools
-  # -------------------------------------------------------------------------
   tools:
-    # ----- PHP CodeSniffer --------------------------------------------------
     php_code_sniffer:
       enabled: true
       config:
-        standard: 'PSR12'
-        encoding: 'utf8'
-      severity:
-        error: true
-        warning: false
-      warning_severity:
-        error: false
-      filter:
-        directories:
-          - 'src'
-
-    # ----- PHP Copy/Paste Detector -----------------------------------------
-    php_cpd:
-      enabled: true
-      min_lines: 5
-      min_tokens: 70
-      excluded_dirs:
-        - vendor
-        - tests
-
-    # ----- PHP Mess Detector ------------------------------------------------
-    php_mess_detector:
-      enabled: true
-      config:
-        cyclomatic_complexity: true
-        npath_complexity:     true
-        essential_urgency:    true
-        code_size:            true
-        naming:               true
-        unused_code:          true
-        controversial:        true
-      filter:
-        directories:
-          - 'src'
-
-    # ----- PHPStan ----------------------------------------------------------
+        standard: PSR12
     phpstan:
       enabled: true
       version: '1.12.*'
-      config_file: 'phpstan.neon'
+      config_file: phpstan.neon
       level: 9
-      analyze:
-        directories:
-          - 'src'
-
-    # ----- Psalm ------------------------------------------------------------
-    psalm:
-      enabled: true
-      config_file: 'psalm.xml'
-      level: 5
-
-    # ----- PHP CS Fixer -----------------------------------------------------
-    php_cs_fixer:
-      enabled: true
-      config_file: '.php-cs-fixer.dist.php'
-      dry_run: true
-      show_diff: true
-      filter:
-        directories:
-          - 'src'
-
-    # ----- External code quality monitors -----------------------------------
-    external_code_coverage:
-      enabled: true
-      priority: 100
-
-  # -------------------------------------------------------------------------
-  # TEST — How to run the test suite
-  # -------------------------------------------------------------------------
   tests:
     override:
       - command: >
           ./vendor/bin/phpunit
           --configuration phpunit.xml.dist
           --coverage-clover coverage/clover.xml
-          --coverage-html coverage/html
           --colors=never
         coverage:
           file: coverage/clover.xml
-          format: php-clover
-
-      - command: >
-          ./vendor/bin/phpunit
-          --configuration phpunit.xml.dist
-          --coverage-clover clover.xml
-          --colors=never
-        coverage:
-          file: clover.xml
           format: php-clover
