@@ -20,10 +20,8 @@ filter:
     - 'tests/*'
     - 'vendor/*'
     - '.git/*'
-    - 'vendor/**'
 
   # By default we analyze everything under src/
-  # Add here to exclude specific files if needed
   # paths:
   #   - src/**
 
@@ -32,260 +30,195 @@ filter:
 # ---------------------------------------------------------------------------
 build:
   # Build timeout — kill the whole build if it exceeds this
-  # Format: integer = seconds. Set generously for composer install + all tools.
-  # Default is 600s; increase for slow dependency resolution.
+  # Format: integer = seconds. Default is 600s.
   timeout: 600
 
   environment:
     # -------------------------------------------------------------------------
-    # PHP Runtime — base version used for dependency installation
+    # PHP Runtime
     # -------------------------------------------------------------------------
     php:
-      # Primary version used to `composer install` and as base for the matrix.
-      # Must be one of the versions listed in your `nodes:` block below.
+      # Primary version used to `composer install`.
+      # Must match one of the versions in your `nodes:` block below.
       version: 8.3
 
-      # PHP extensions to load. Some come bundled with PHP (no install needed);
-      # others must be installed via pecl or system packages.
-      # Format: list of extension names. Scrutinizer handles installation.
+      # PHP extensions to load/install.
       pecl_extensions:
-        # Key/value store adapters used by the library
         - redis
         - memcached
-        # APCu — in-memory local cache, fast, no daemon needed
         - apcu
-        # PCoV — extremely fast code-coverage driver (replaces Xdebug for cov)
         - pcov
 
-    # -------------------------------------------------------------------------
     # Environment variables set before every build step.
-    # Use these to configure services (Redis, Memcached) or tool behaviour.
-    # NOTE: This is at build.environment.environment:, NOT build.environment.php.environment:
-    # -------------------------------------------------------------------------
+    # NOTE: this is build.environment.environment — a sibling of php, NOT inside php.
     environment:
-      # Disable Xdebug for faster static-analysis runs (we use pcov for cov)
       XDEBUG_MODE: 'off'
-      # Ensure PHPUnit uses pcov as the coverage driver (no ext required, builtin)
       PHP_COVERAGE_DRIVER: 'pcov'
-      # Verbose composer for easier CI debugging
       COMPOSER_PROCESS_TIMEOUT: 600
-      # Skip platform req checks so composer doesn't die if extensions missing locally
       COMPOSER_IGNORE_PLATFORM_REQ_RPHP: '0'
 
-    # -------------------------------------------------------------------------
-    # Dependency caching — critical for build speed
-    # -------------------------------------------------------------------------
-    cache:
-      # Can be set to false to disable caching entirely (not recommended)
-      disabled: false
+  # -------------------------------------------------------------------------
+  # Dependency caching — critical for build speed
+  # -------------------------------------------------------------------------
+  cache:
+    disabled: false
+    directories:
+      - '~/.composer/cache'
+      - 'composer.lock'
+      - 'vendor/'
 
-      # Named directories to cache between builds.
-      # Scrutinizer persists these across builds on the same branch.
-      directories:
-        # Composer downloads — by far the biggest time-saver
-        - '~/.composer/cache'
-        # Local composer.lock timestamp
-        - 'composer.lock'
-        # Vendor directory (populated by `composer install`)
-        - 'vendor/'
+  # -------------------------------------------------------------------------
+  # Dependency installation — runs before tools and tests
+  # -------------------------------------------------------------------------
+  dependencies:
+    override:
+      - composer self-update --no-interaction
+      - composer install --no-interaction --prefer-dist --ansi
 
-    # -------------------------------------------------------------------------
-    # Dependency installation — runs before tools and tests
-    # -------------------------------------------------------------------------
-    dependencies:
-      # Before ANY tool or test step, run these commands (in order).
-      override:
-        - composer self-update --no-interaction
-        - composer install --no-interaction --prefer-dist --ansi
+  # -------------------------------------------------------------------------
+  # Static Analysis Tools
+  # -------------------------------------------------------------------------
+  tools:
+    # ----- PHP CodeSniffer --------------------------------------------------
+    php_code_sniffer:
+      enabled: true
+      config:
+        standard: 'PSR12'
+        encoding: 'utf8'
+      severity:
+        error: true
+        warning: false
+      warning_severity:
+        error: false
+      filter:
+        directories:
+          - 'src'
 
-    # -------------------------------------------------------------------------
-    # Static Analysis Tools
-    # -------------------------------------------------------------------------
-    tools:
-      # ----- PHP CodeSniffer --------------------------------------------------
-      # Checks PSR-12 coding style + custom rule sets.
-      # Runs fast, catches style violations before humans review.
-      php_code_sniffer:
-        enabled: true
-        config:
-          standard: 'PSR12'
-          encoding: 'utf8'
-        # Warn on anything below PSR-12
-        severity:
-          error: true
-          warning: false
-        # Do not fail the build on warnings (only errors)
-        warning_severity:
-          error: false
-        # Limit to src/ (not tests, not vendor)
-        filter:
-          directories:
-            - 'src'
+    # ----- PHP Copy/Paste Detector -----------------------------------------
+    php_cpd:
+      enabled: true
+      min_lines: 5
+      min_tokens: 70
+      excluded_dirs:
+        - vendor
+        - tests
 
-      # ----- PHP Copy/Paste Detector -----------------------------------------
-      # Finds duplicated code blocks ≥ 5 statements.
-      # Duplication is a maintenance hazard — eliminate early.
-      php_cpd:
-        enabled: true
-        # Minimum matching lines for a block to count as duplicated
-        min_lines: 5
-        # Minimum matching tokens in a block
-        min_tokens: 70
-        # Do not report on vendor or generated files
-        excluded_dirs:
-          - vendor
-          - tests
+    # ----- PHP Mess Detector ------------------------------------------------
+    php_mess_detector:
+      enabled: true
+      config:
+        cyclomatic_complexity: true
+        npath_complexity:     true
+        essential_urgency:    true
+        code_size:            true
+        naming:               true
+        unused_code:          true
+        controversial:        true
+      filter:
+        directories:
+          - 'src'
 
-      # ----- PHP Mess Detector ------------------------------------------------
-      # Detects: complex methods, unused code, shortcut aliases, etc.
-      php_mess_detector:
-        enabled: true
-        config:
-          # Rule groups to enable (all are recommended)
-          cyclomatic_complexity: true
-          npath_complexity:     true
-          essential_urgency:    true
-          code_size:            true
-          naming:               true
-          unused_code:          true
-          controversial:        true
-        # Paths to analyze
-        filter:
-          directories:
-            - 'src'
+    # ----- PHPStan ----------------------------------------------------------
+    phpstan:
+      enabled: true
+      version: '1.12.*'
+      config_file: 'phpstan.neon'
+      level: 9
+      analyze:
+        directories:
+          - 'src'
 
-      # ----- PHPStan ----------------------------------------------------------
-      # Semantic static analysis — strongest for catching real bugs.
-      # Level 9 = very strict, Level 10 = maximum (may need baseline).
-      phpstan:
-        enabled: true
-        # Must match composer.json require-dev version
-        version: '1.12.*'
-        config_file: 'phpstan.neon'
-        # Level 6 is a good balance; push to 9 for max safety.
-        level: 9
-        # Analyze src/ only; vendor is already excluded by phpstan.nech
-        analyze:
-          directories:
-            - 'src'
+    # ----- Psalm ------------------------------------------------------------
+    psalm:
+      enabled: true
+      config_file: 'psalm.xml'
+      level: 5
 
-      # ----- Psalm ------------------------------------------------------------
-      # Type-safe static analysis by Vimeo.
-      # Level 1 = relaxed, 4 = strict, 5 = very strict.
-      psalm:
-        enabled: true
-        config_file: 'psalm.xml'
-        # Run at level 5 for maximum bug prevention.
-        level: 5
-        # Store baseline for known issues (creates psalm baseline.xml)
-        # allow-baseline: true
+    # ----- PHP CS Fixer -----------------------------------------------------
+    php_cs_fixer:
+      enabled: true
+      config_file: '.php-cs-fixer.dist.php'
+      dry_run: true
+      show_diff: true
+      filter:
+        directories:
+          - 'src'
 
-      # ----- PHP CS Fixer (auto-fix, dry-run in CI) ---------------------------
-      # Fails the build if any file violates PSR-12 style.
-      php_cs_fixer:
-        enabled: true
-        config_file: '.php-cs-fixer.dist.php'
-        # true = dry-run (report only, don't modify). false = fix in place.
-        dry_run: true
-        # true = show diff of what would change
-        show_diff: true
-        # Only check src/
-        filter:
-          directories:
-            - 'src'
+    # ----- External code quality monitors -----------------------------------
+    external_code_coverage:
+      enabled: true
+      priority: 100
 
-      # ----- External code quality monitors -----------------------------------
-      # These are free external services — enable them all.
-      external_code_coverage:
-        # Pull coverage data from coveralls.io (already in your README).
-        # Requires coveralls to be configured in .travis.yml or GitHub Actions.
-        enabled: true
-        # Scrutinizer accepts clover.xml from your build output.
-        # The tests: override below produces it.
-        priority: 100
+  # -------------------------------------------------------------------------
+  # TEST — How to run the test suite
+  # -------------------------------------------------------------------------
+  tests:
+    override:
+      - command: >
+          ./vendor/bin/phpunit
+          --configuration phpunit.xml.dist
+          --coverage-clover coverage/clover.xml
+          --coverage-html coverage/html
+          --colors=never
+        coverage:
+          file: coverage/clover.xml
+          format: php-clover
+          report_of:
+            directories:
+              - src
+          exclude_patch: true
+          annotation:
+            mode: 'annotation'
 
-    # -------------------------------------------------------------------------
-    # TEST — How to run the test suite
-    # -------------------------------------------------------------------------
-    tests:
-      # Run the full composer build (lint → check-format → psalm → phpstan → test)
-      # The `composer build` script is defined in composer.json scripts.
-      override:
-        # Generate clover.xml coverage report while running tests
-        - command: >
-            ./vendor/bin/phpunit
-            --configuration phpunit.xml.dist
-            --coverage-clover coverage/clover.xml
-            --coverage-html coverage/html
-            --colors=never
-          coverage:
-            # The clover.xml file path that php_cpd / external tools consume
-            file: coverage/clover.xml
-            # Format must be 'php-clover' for Scrutinizer's parser
-            format: php-clover
-            # Do NOT report on vendor or test files
-            report_of:
-              directories:
-                - src
-            # Exclude boilerplate / magic methods from complexity scoring
-            exclude_patch: true
-            annotation:
-              # Only count lines marked @covers for coverage metrics
-              mode: 'annotation'
+      - command: >
+          ./vendor/bin/phpunit
+          --configuration phpunit.xml.dist
+          --coverage-clover clover.xml
+          --colors=never
+        coverage:
+          file: clover.xml
+          format: php-clover
 
-        # Fallback: also accept Clover from another path (e.g. parallel/coverage)
-        - command: >
-            ./vendor/bin/phpunit
-            --configuration phpunit.xml.dist
-            --coverage-clover clover.xml
-            --colors=never
-          coverage:
-            file: clover.xml
-            format: php-clover
-
-  # ---------------------------------------------------------------------------
-  # NODES — PHP version matrix
-  # Each node runs independently. All run in parallel.
-  # ---------------------------------------------------------------------------
-  nodes:
-    # Node 1: PHP 8.1 — minimum supported version
-    php81:
+# ---------------------------------------------------------------------------
+# NODES — PHP version matrix
+# Each node runs independently and in parallel.
+# ---------------------------------------------------------------------------
+nodes:
+  php81:
+    environment:
+      php:
+        version: 8.1
+        pecl_extensions:
+          - redis
+          - memcached
+          - apcu
+          - pcov
       environment:
-        php:
-          version: 8.1
-          pecl_extensions:
-            - redis
-            - memcached
-            - apcu
-            - pcov
-        environment:
-          XDEBUG_MODE: 'off'
-          PHP_COVERAGE_DRIVER: 'pcov'
+        XDEBUG_MODE: 'off'
+        PHP_COVERAGE_DRIVER: 'pcov'
 
-    # Node 2: PHP 8.2 — current stable in many distros
-    php82:
+  php82:
+    environment:
+      php:
+        version: 8.2
+        pecl_extensions:
+          - redis
+          - memcached
+          - apcu
+          - pcov
       environment:
-        php:
-          version: 8.2
-          pecl_extensions:
-            - redis
-            - memcached
-            - apcu
-            - pcov
-        environment:
-          XDEBUG_MODE: 'off'
-          PHP_COVERAGE_DRIVER: 'pcov'
+        XDEBUG_MODE: 'off'
+        PHP_COVERAGE_DRIVER: 'pcov'
 
-    # Node 3: PHP 8.3 — latest stable
-    php83:
+  php83:
+    environment:
+      php:
+        version: 8.3
+        pecl_extensions:
+          - redis
+          - memcached
+          - apcu
+          - pcov
       environment:
-        php:
-          version: 8.3
-          pecl_extensions:
-            - redis
-            - memcached
-            - apcu
-            - pcov
-        environment:
-          XDEBUG_MODE: 'off'
-          PHP_COVERAGE_DRIVER: 'pcov'
+        XDEBUG_MODE: 'off'
+        PHP_COVERAGE_DRIVER: 'pcov'
