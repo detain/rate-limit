@@ -163,12 +163,6 @@ build:
         coverage:
           file: coverage/clover.xml
           format: php-clover
-          report_of:
-            directories:
-              - src
-          exclude_patch: true
-          annotation:
-            mode: 'annotation'
 
       - command: >
           ./vendor/bin/phpunit
