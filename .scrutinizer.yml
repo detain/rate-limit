@@ -50,8 +50,8 @@ build:
         - pcov
 
     # Environment variables set before every build step.
-    # NOTE: this is build.environment.environment — a sibling of php, NOT inside php.
-    environment:
+    # NOTE: 'variables' is the correct key for env vars under build.environment.
+    variables:
       XDEBUG_MODE: 'off'
       PHP_COVERAGE_DRIVER: 'pcov'
       COMPOSER_PROCESS_TIMEOUT: 600
@@ -193,7 +193,7 @@ nodes:
           - memcached
           - apcu
           - pcov
-      environment:
+      variables:
         XDEBUG_MODE: 'off'
         PHP_COVERAGE_DRIVER: 'pcov'
 
@@ -206,7 +206,7 @@ nodes:
           - memcached
           - apcu
           - pcov
-      environment:
+      variables:
         XDEBUG_MODE: 'off'
         PHP_COVERAGE_DRIVER: 'pcov'
 
@@ -219,6 +219,6 @@ nodes:
           - memcached
           - apcu
           - pcov
-      environment:
+      variables:
         XDEBUG_MODE: 'off'
         PHP_COVERAGE_DRIVER: 'pcov'
