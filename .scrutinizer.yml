@@ -1,44 +1,202 @@
+# Scrutinizer CI configuration -- modern format (PHP 8.3, named nodes).
+# Reference: https://scrutinizer-ci.com/docs/configuration/build_reference
+
 filter:
-  excluded_paths:
-    - 'tests/*'
-    - 'vendor/*'
-    - '.git/*'
+    excluded_paths:
+        - 'tests/*'
+        - 'vendor/*'
+    dependency_paths:
+        - 'vendor/*'
 
 build:
-  timeout: 600
-  environment:
+    environment:
+        php:
+            version: '8.3'
+            ini:
+                'date.timezone': 'America/New_York'
+                'memory_limit': '512M'
+        variables:
+            COMPOSER_DISCARD_CHANGES: 'true'
+
+    nodes:
+        analysis:
+            tests:
+                override:
+                    - php-scrutinizer-run
+
+        tests:
+            cache:
+                disabled: false
+                directories:
+                    - ~/.composer/cache
+                    - vendor/
+            dependencies:
+                override:
+                    - 'composer self-update --no-interaction'
+                    - 'composer install --no-interaction --prefer-dist --no-progress --ansi'
+            tests:
+                override:
+                    -
+                        command: 'vendor/bin/phpunit --coverage-clover=coverage.xml'
+                        coverage:
+                            file: 'coverage.xml'
+                            format: 'clover'
+
+checks:
     php:
-      version: 8.3
-      pecl_extensions:
-        - redis
-        - memcached
-        - apcu
-        - pcov
-    variables:
-      XDEBUG_MODE: 'off'
-      PHP_COVERAGE_DRIVER: 'pcov'
-      COMPOSER_PROCESS_TIMEOUT: 600
-  dependencies:
-    override:
-      - composer self-update --no-interaction
-      - composer install --no-interaction --prefer-dist --ansi
-  tools:
-    php_code_sniffer:
-      enabled: true
-      config:
-        standard: PSR12
-    phpstan:
-      enabled: true
-      version: '1.12.*'
-      config_file: phpstan.neon
-      level: 9
-  tests:
-    override:
-      - command: >
-          ./vendor/bin/phpunit
-          --configuration phpunit.xml.dist
-          --coverage-clover coverage/clover.xml
-          --colors=never
-        coverage:
-          file: coverage/clover.xml
-          format: php-clover
+        argument_type_checks: true
+        avoid_closing_tag: true
+        avoid_corrupting_byteorder_marks: true
+        avoid_duplicate_types: true
+        avoid_fixme_comments: true
+        avoid_perl_style_comments: true
+        avoid_usage_of_logical_operators: true
+        blank_line_after_namespace_declaration: true
+        code_rating: true
+        comparison_always_same_result: true
+        deadlock_detection_in_loops: true
+        deprecated_code_usage: true
+        duplication: true
+        encourage_shallow_comparison: true
+        fix_doc_comments: true
+        fix_use_statements:
+            remove_unused: true
+            preserve_multiple: false
+            preserve_blanklines: false
+            order_alphabetically: true
+        instanceof_class_exists: true
+        missing_arguments: true
+        more_specific_types_in_doc_comments: true
+        no_goto: true
+        no_long_variable_names:
+            maximum: '25'
+        no_non_implemented_abstract_methods: true
+        no_short_open_tag: true
+        no_trailing_whitespace: true
+        no_unnecessary_if: true
+        non_commented_empty_catch_block: true
+        one_class_per_file: true
+        param_doc_comment_if_not_inferrable: true
+        parameter_doc_comments: true
+        parameters_in_camelcaps: true
+        parse_doc_comments: true
+        phpunit_assertions: true
+        precedence_in_conditions: true
+        precedence_mistakes: true
+        properties_in_camelcaps: true
+        property_assignments: true
+        remove_extra_empty_lines: true
+        return_doc_comment_if_not_inferrable: true
+        return_doc_comments: true
+        simplify_boolean_return: true
+        uppercase_constants: true
+
+coding_style:
+    php:
+        indentation:
+            general:
+                use_tabs: true
+                size: 4
+            switch:
+                indent_case: true
+        spaces:
+            general:
+                linefeed_character: newline
+            before_parentheses:
+                function_declaration: false
+                closure_definition: false
+                function_call: false
+                if: true
+                for: true
+                while: true
+                switch: true
+                catch: true
+                array_initializer: false
+            around_operators:
+                assignment: true
+                logical: true
+                equality: true
+                relational: true
+                bitwise: true
+                additive: true
+                multiplicative: true
+                shift: true
+                unary_additive: false
+                concatenation: false
+                negation: false
+            before_left_brace:
+                class: true
+                function: true
+                if: true
+                else: true
+                for: true
+                while: true
+                do: true
+                switch: true
+                try: true
+                catch: true
+                finally: true
+            before_keywords:
+                else: true
+                while: true
+                catch: true
+                finally: true
+            within:
+                brackets: false
+                array_initializer: false
+                grouping: false
+                function_call: false
+                function_declaration: false
+                if: false
+                for: false
+                while: false
+                switch: false
+                catch: false
+                type_cast: false
+            ternary_operator:
+                before_condition: true
+                after_condition: true
+                before_alternative: true
+                after_alternative: true
+                in_short_version: false
+            other:
+                before_comma: false
+                after_comma: true
+                before_semicolon: false
+                after_semicolon: true
+                after_type_cast: true
+        braces:
+            classes_functions:
+                class: end-of-line
+                function: end-of-line
+                closure: end-of-line
+            if:
+                opening: end-of-line
+                always: false
+                else_on_new_line: false
+            for:
+                opening: end-of-line
+                always: false
+            while:
+                opening: end-of-line
+                always: false
+            do_while:
+                opening: end-of-line
+                always: false
+                while_on_new_line: false
+            switch:
+                opening: end-of-line
+            try:
+                opening: end-of-line
+                catch_on_new_line: false
+                finally_on_new_line: false
+        upper_lower_casing:
+            keywords:
+                general: lower
+            constants:
+                true_false_null: lower
+
+build_failure_conditions:
+    - 'elements.rating(<= D).new.exists'                       # No new D-or-worse rated elements
+    - 'issues.severity(>= MAJOR).new.exists'                   # No new MAJOR+ severity issues
+    - 'project.metric_change("scrutinizer.test_coverage", < -0.05)' # Coverage cannot drop more than 5%
